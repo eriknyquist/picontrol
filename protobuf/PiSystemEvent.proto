@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package PiSystemEvent;
+
+message Booted {
+}
+
+message BackgroundTaskCompleted {
+    required uint32 taskID = 1;
+    required string output = 2;
+}
+
+message PiSystemEvent {
+    oneof event {
+        Booted booted = 1;
+        BackgroundTaskCompleted backgroundTaskCompleted = 2;
+    }
+}

@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package PiNetworkEvent;
+
+message NetworkConnected {
+    required string interface = 1;
+}
+
+message PiNetworkEvent {
+    oneof event {
+        NetworkConnected networkConnected = 1;
+    }
+}

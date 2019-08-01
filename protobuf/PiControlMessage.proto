@@ -1,0 +1,30 @@
+syntax = "proto2";
+
+package PiControlMessage;
+
+import "PiNetworkCommand.proto";
+import "PiSystemCommand.proto";
+import "PiSystemEvent.proto";
+import "PiNetworkEvent.proto";
+
+message PiCommand {
+    oneof commandModule {
+        PiNetworkCommand.PiNetworkCommand networkCommand = 1;
+        PiSystemCommand.PiSystemCommand systemCommand = 2;
+    }
+}
+
+message PiEvent {
+    oneof eventModule {
+        PiSystemEvent.PiSystemEvent systemEvent = 1;
+        PiNetworkEvent.PiNetworkEvent networkEvent = 2;
+    }
+}
+
+message PiControlMessage {
+    required uint32 crc = 1;
+    oneof messageData {
+        PiCommand command = 2;
+        PiEvent event = 3;
+    }
+}

@@ -1,0 +1,27 @@
+syntax = "proto2";
+
+package PiSystemCommand;
+
+enum PiSystemStatus {
+    OK = 1;
+    ERROR = 2;
+}
+
+message Shutdown {
+    message Response {
+        required PiSystemStatus status = 1;
+    }
+}
+
+message Reboot {
+    message Response {
+        required PiSystemStatus status = 1;
+    }
+}
+
+message PiSystemCommand {
+    oneof command {
+        Shutdown shutdown = 1;
+        Reboot reboot = 2;
+    }
+}
