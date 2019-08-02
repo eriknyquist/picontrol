@@ -14,6 +14,10 @@ message PiCommand {
     }
 }
 
+message PiResponse {
+    required bytes responseData = 1;
+}
+
 message PiEvent {
     oneof eventModule {
         PiSystemEvent.PiSystemEvent systemEvent = 1;
@@ -22,7 +26,6 @@ message PiEvent {
 }
 
 message PiControlMessage {
-    required uint32 crc = 1;
     oneof messageData {
         PiCommand command = 2;
         PiEvent event = 3;
