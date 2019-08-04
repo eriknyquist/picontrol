@@ -27,7 +27,8 @@ message PiEvent {
 
 message PiControlMessage {
     oneof messageData {
-        PiCommand command = 2;
+        PiCommand command = 1;
+        PiResponse response = 2;
         PiEvent event = 3;
     }
 }

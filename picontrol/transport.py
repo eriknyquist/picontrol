@@ -1,28 +1,26 @@
 import struct
 import binascii
+import threading
 
-from threading import Thread
 from picontrol.event import Event
+import PiControlMessage_pb2 as PiControlMessage
 
 LENGTH_FIELD_SIZE = struct.calcsize('H')
 HEADER_SIZE = struct.calcsize('HI')
+COMMAND_TIMEOUT_SEC = 10
 
 class TransportLayer(object):
-    def __init__(self, write_bytes_function, read_bytes_function):
-        self._packet_received = Event()
+    def __init__(self, write_bytes_function, read_bytes_function, packet_handler):
+        self._packet_handler = packet_handler
         self._read_bytes = read_bytes_function
         self._write_bytes = write_bytes_function
 
         self._bytes = b''
         self._msg_size = None
 
-        self._read_thread = Thread(target=self._read_task)
+        self._read_thread = threading.Thread(target=self._read_task)
         self._read_thread.daemon = False
         self._read_thread.start()
-
-    @property
-    def on_packet_received(self):
-        return self._packet_received
 
     def write_packet(self, message_data):
         length = len(message_data)
@@ -52,6 +50,88 @@ class TransportLayer(object):
                 raise RuntimeError("CRC mismatch! expected %d, got %d" %
                                    (calculated_crc, crc))
 
-            self._packet_received.generate(message_data)
+            if self._packet_handler:
+                self._packet_handler(message_data)
+
             self._bytes = b''
             self._msg_size = None
+
+class TransportManager(object):
+    def __init__(self, write_bytes_function, read_bytes_function,
+                 command_handler=None, event_handler=None):
+        self._handled_command = threading.Event()
+        self._handled_command.set()
+
+        self._response_received = threading.Event()
+        self._response_received.set()
+        self._response_data = None
+
+        self._command_handler = command_handler
+        self._event_handler = event_handler
+        self._transport = TransportLayer(write_bytes_function,
+                                         read_bytes_function,
+                                         self._packet_handler)
+
+    def _packet_handler(self, message_data):
+        msg = PiControlMessage.PiControlMessage()
+        msg.ParseFromString(message_data)
+        print(type(msg), msg)
+        message_type = msg.WhichOneof("messageData")
+
+        if message_type == "command":
+            if self._command_handler is None:
+                return
+
+            self._handled_command.clear()
+            response_payload = self._command_handler(msg.command)
+            response = PiControlMessage.PiControlMessage()
+            response.response.responseData = response_payload.SerializeToString()
+            self._write_message(response)
+            self._handled_command.set()
+        elif message_type == "response":
+            if self._response_received.is_set():
+                print("unexpected response received!")
+            else:
+                self._response_data = msg.response.responseData
+                self._response_received.set()
+
+        elif message_type == "event":
+            if self._event_handler is None:
+                return
+
+            self._event_handler(msg.event)
+        else:
+            print("unhandled message type '%s'" % message_type)
+
+    def _write_message(self, message):
+        self._transport.write_packet(message.SerializeToString())
+
+    def write_event(self, event):
+        # If we are currently handling a command, wait for that to finish
+        handled = self._handled_command.wait(COMMAND_TIMEOUT_SEC)
+        if not handled:
+            raise RuntimeError("Timed out waiting for command to be handled")
+
+        # Write out event data
+        self._write_message(event)
+
+    def write_command(self, command):
+        # If we are currently handling a command, wait for that to finish
+        handled = self._handled_command.wait(COMMAND_TIMEOUT_SEC)
+        if not handled:
+            raise RuntimeError("Timed out waiting for command to be handled")
+
+        # Send command data
+        self._response_received.clear()
+        self._write_message(command)
+
+        # Wait for response to be received
+        received = self._response_received.wait(COMMAND_TIMEOUT_SEC)
+
+        # Ensure response flag is reset
+        self._response_received.set()
+
+        if not received:
+            raise RuntimeError("Command timed out: no response received")
+
+        return self._response_data

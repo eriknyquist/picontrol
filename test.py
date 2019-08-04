@@ -1,39 +1,44 @@
-import sys
-import os
-import struct
-import binascii
 import time
 
 from queue import Queue
-from picontrol.transport import TransportLayer
 
-script_directory = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(script_directory, 'protobuf/python'))
+from picontrol import PiControlMessage_pb2 as PiControlMessage
+from picontrol import PiNetworkCommand_pb2 as PiNetworkCommand
+from picontrol.transport import TransportLayer, TransportManager
 
-import PiControlMessage_pb2 as PiControlMessage
+queue1 = Queue()
+queue2 = Queue()
 
-test_queue = Queue()
-
-def write_to_queue(message_data):
+def write_to_queue1(message_data):
     for byte in message_data:
-        test_queue.put(byte)
+        queue1.put(byte)
 
-def read_from_queue(num_bytes):
+def read_from_queue1(num_bytes):
     ret = b''
     for i in range(num_bytes):
-        ret += bytes([test_queue.get()])
+        ret += bytes([queue1.get()])
 
     return ret
 
-def packet_handler(message_data):
-    msg = PiControlMessage.PiControlMessage()
-    msg.ParseFromString(message_data)
-    print("received message:")
-    print(msg)
+def write_to_queue2(message_data):
+    for byte in message_data:
+        queue2.put(byte)
 
-sender = TransportLayer(write_to_queue, None)
-receiver = TransportLayer(write_to_queue, read_from_queue)
-receiver.on_packet_received.add_handler(packet_handler)
+def read_from_queue2(num_bytes):
+    ret = b''
+    for i in range(num_bytes):
+        ret += bytes([queue2.get()])
+
+    return ret
+
+def command_handler(command):
+    resp = PiNetworkCommand.GetIPAddress.Response()
+    resp.address = "1.2.3.4"
+    resp.status = PiNetworkCommand.OK
+    return resp
+
+sender = TransportManager(write_to_queue1, read_from_queue2)
+receiver = TransportManager(write_to_queue2, read_from_queue1, command_handler)
 
 message = PiControlMessage.PiControlMessage()
 message.command.networkCommand.getIPAddress.interface = "wlan123"
@@ -41,5 +46,7 @@ message.command.networkCommand.getIPAddress.interface = "wlan123"
 print("sending message:")
 print(message)
 
-sender.write_packet(message.SerializeToString())
+resp = sender.write_command(message)
+print("got response:")
+print(resp)
 time.sleep(2)

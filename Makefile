@@ -1,5 +1,5 @@
 PROJECT_PATH := $(dir $(abspath $(MAKEFILE_LIST)))
-PROTOBUF_SRC_DIR := $(PROJECT_PATH)protobuf
+PROTOBUF_SRC_DIR := $(PROJECT_PATH)picontrol/protobuf
 PROTOBUF_OUT_DIR := $(PROTOBUF_SRC_DIR)/python
 
 PROTOC_BIN := protoc
