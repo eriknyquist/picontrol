@@ -1,9 +1,13 @@
 import struct
 import binascii
 import threading
+import logging
 
 from picontrol.event import Event
 import PiControlMessage_pb2 as PiControlMessage
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 LENGTH_FIELD_SIZE = struct.calcsize('H')
 HEADER_SIZE = struct.calcsize('HI')
@@ -26,6 +30,8 @@ class TransportLayer(object):
         length = len(message_data)
         crc = binascii.crc32(message_data)
         bytes_to_write = struct.pack('HI%ds'% length, length, crc, message_data)
+
+        logger.info('writing packet: %s' % bytes_to_write.hex())
         self._write_bytes(bytes_to_write)
 
     def _read_task(self):
@@ -49,6 +55,8 @@ class TransportLayer(object):
             if calculated_crc != crc:
                 raise RuntimeError("CRC mismatch! expected %d, got %d" %
                                    (calculated_crc, crc))
+
+            logger.info('received packet: %s' % message_data.hex())
 
             if self._packet_handler:
                 self._packet_handler(message_data)
@@ -75,9 +83,7 @@ class TransportManager(object):
     def _packet_handler(self, message_data):
         msg = PiControlMessage.PiControlMessage()
         msg.ParseFromString(message_data)
-        print(type(msg), msg)
         message_type = msg.WhichOneof("messageData")
-
         if message_type == "command":
             if self._command_handler is None:
                 return
@@ -90,7 +96,7 @@ class TransportManager(object):
             self._handled_command.set()
         elif message_type == "response":
             if self._response_received.is_set():
-                print("unexpected response received!")
+                logger.error("unexpected response received!")
             else:
                 self._response_data = msg.response.responseData
                 self._response_received.set()
@@ -101,7 +107,7 @@ class TransportManager(object):
 
             self._event_handler(msg.event)
         else:
-            print("unhandled message type '%s'" % message_type)
+            logger.error("unhandled message type '%s'" % message_type)
 
     def _write_message(self, message):
         self._transport.write_packet(message.SerializeToString())

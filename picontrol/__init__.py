@@ -9,3 +9,7 @@ import PiSystemCommand_pb2
 import PiSystemEvent_pb2
 import PiNetworkCommand_pb2
 import PiNetworkEvent_pb2
+
+import logging
+logging.basicConfig()
+
