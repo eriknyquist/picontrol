@@ -11,5 +11,5 @@ import PiNetworkCommand_pb2
 import PiNetworkEvent_pb2
 
 import logging
-logging.basicConfig()
+logging.basicConfig(format="[%(asctime)s][%(levelname)s][%(module)s:%(lineno)s]: %(message)s")
 

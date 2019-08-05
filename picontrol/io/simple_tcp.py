@@ -41,15 +41,11 @@ class SimpleTCPServer(object):
         self._connected.wait(timeout)
 
     def write_bytes(self, bytes_to_write):
-        if (not self._conn) or (not self._sock):
-            raise ValueError("no client connected")
-
+        self.wait_for_connection()
         self._conn.sendall(bytes_to_write)
 
     def read_bytes(self, num_bytes):
-        if (not self._conn) or (not self._sock):
-            raise ValueError("no client connected")
-
+        self.wait_for_connection()
         ret = b''
         if len(self._buffer) > 0:
             ret = self._buffer[:num_bytes]
@@ -132,15 +128,11 @@ class SimpleTCPClient(object):
         self._connected.wait(timeout)
 
     def write_bytes(self, bytes_to_write):
-        if (not self._connected.is_set()) or (not self._sock):
-            raise ValueError("no client connected")
-
+        self.wait_for_connection()
         self._sock.sendall(bytes_to_write)
 
     def read_bytes(self, num_bytes):
-        if (not self._connected.is_set()) or (not self._sock):
-            raise ValueError("no client connected")
-
+        self.wait_for_connection()
         ret = b''
         if len(self._buffer) > 0:
             ret = self._buffer[:num_bytes]
@@ -155,7 +147,9 @@ class SimpleTCPClient(object):
             chunk = chunk[slice_size:]
             remaining_bytes -= slice_size
 
-        self._buffer = chunk
+        if chunk:
+            self._buffer += chunk
+
         return ret
 
     def _main_task(self, MAX_BUFFER_SIZE=4096):

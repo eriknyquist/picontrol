@@ -19,7 +19,7 @@ class SystemCommandModule(CommandModule):
     module_name = "systemCommand"
 
     def __init__(self):
-        super(self, SystemCommandModule).__init__(self.module_name)
+        super(SystemCommandModule, self).__init__(self.module_name)
 
     def shutdown(self, command):
         resp = PiSystemCommand.Shutdown.Response()
@@ -35,7 +35,7 @@ class NetworkCommandModule(CommandModule):
     module_name = "networkCommand"
 
     def __init__(self):
-        super(self, NetworkCommandModule).__init__(self.module_name)
+        super(NetworkCommandModule, self).__init__(self.module_name)
 
     def getIPAddress(self, command):
         resp = PiNetworkCommand.GetIPAddress.Response()

@@ -56,7 +56,7 @@ class TransportLayer(object):
                 raise RuntimeError("CRC mismatch! expected %d, got %d" %
                                    (calculated_crc, crc))
 
-            logger.info('received packet: %s' % message_data.hex())
+            logger.info('received packet: %s' % self._bytes.hex())
 
             if self._packet_handler:
                 self._packet_handler(message_data)
